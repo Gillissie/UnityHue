@@ -3,7 +3,7 @@ using System.Collections;
 
 namespace UnityHue{
 	[System.Serializable]
-	public class HueLampState{
+	public class HueLightState{
 		public bool on = false;
 		public int brightness;
 		public int hue;

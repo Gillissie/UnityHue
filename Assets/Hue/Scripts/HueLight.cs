@@ -10,25 +10,27 @@ using MiniJSON;
 namespace UnityHue
 {
 	/// <summary>
-	/// Class for accessing and modifying a single Hue lamp
+	/// Class for accessing and modifying a single Hue light
 	/// </summary>
 	[System.Serializable]
-	public class HueLamp
+	public class HueLight
 	{
 		public string name;
 		public string id;
 		public string type;
 		public string modelID;
 		public string softwareVersion;
-		public HueLampState lampState;
+		public HueLightState state;
+		public bool isDimmable = true;
+		public bool isColor = false;
 
-		public HueLamp(string id, string name)
+		public HueLight(string id, string name)
 		{
 			this.id = id;
 			this.name = name;
 		}
 
-		public HueLamp(string id)
+		public HueLight(string id)
 		{
 			this.id = id;
 		}
@@ -39,7 +41,7 @@ namespace UnityHue
 		}
 
 		public void SetColor(Color color, Action<string> successCallback,
-		                     Action<HueErrorInfo> errorCallback,
+		                     Action<List<HueErrorInfo>> errorCallback,
 		                     params KeyValuePair<string, object>[] additionalParameters
 		                    )
 		{
@@ -53,14 +55,19 @@ namespace UnityHue
 			SetState(successCallback, errorCallback, list.ToArray());
 		}
 
-		public void UpdateLampFromBridge(Action<HueErrorInfo> errorCallback = null)
+		public void UpdateLightFromBridge(Action<List<HueErrorInfo>> errorCallback = null)
 		{
-			HueBridge.instance.UpdateLampFromBridge(id, this, errorCallback);
+			HueBridge.instance.UpdateLightFromBridge(id, this, errorCallback);
 		}
 
 		public void SetState()
 		{
-			SetState(StateToParameters(this.lampState));
+			SetState(this.StateToParameters());
+		}
+
+		public void CopyState(HueLight fromLight)
+		{
+			SetState(fromLight.StateToParameters());
 		}
 
 		public void SetState(params KeyValuePair<string, object>[] parameters)
@@ -68,19 +75,8 @@ namespace UnityHue
 			SetState(null, null, parameters);
 		}
 
-		public void SetState(HueLampState state)
-		{
-			SetState(null, null, StateToParameters(state));
-		}
-
-		public void SetState(HueLampState state, Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback)
-		{
-			SetState(successCallback, errorCallback, StateToParameters(state));
-		}
-
 		/// <summary>
-		/// Sets the state of the lamp according to the supplied JsonParameters
+		/// Sets the state of the light according to the supplied JsonParameters
 		/// A JsonParameter consists of a key (the name of the parameter as specified
 		/// by the hue api i.e "bri" for brightness) and a value to which that parameter
 		/// should be set. 
@@ -88,10 +84,11 @@ namespace UnityHue
 		/// <param name="successCallback">Success callback.</param>
 		/// <param name="errorCallback">Error callback.</param>
 		/// <param name="parameters">Parameters.</param>
-		public void SetState(Action<string> successCallback,
-		                     Action<HueErrorInfo> errorCallback,
-		                     params KeyValuePair<string, object>[] parameters
-		                    )
+		public void SetState(
+			Action<string> successCallback,
+			Action<List<HueErrorInfo>> errorCallback,
+			params KeyValuePair<string, object>[] parameters
+		)
 		{
 			string url = string.Format("{0}/lights/{1}/state", HueBridge.instance.BaseURLWithUserName, id);
 
@@ -106,13 +103,13 @@ namespace UnityHue
 			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
 
-		public void SetName(string lampName, Action<string> successCallback = null, Action<HueErrorInfo> errorCallback = null)
+		public void SetName(string lightName, Action<string> successCallback = null, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			string url = string.Format("{0}/lights/{1}", HueBridge.instance.BaseURLWithUserName, id);
 
 			var body = new Dictionary<string, object>()
 			{
-				{ HueKeys.NAME, lampName }
+				{ HueKeys.NAME, lightName }
 			};
 
 			var www = new WWWWrapper(url, body, method: HTTPMethod.PUT);
@@ -120,25 +117,48 @@ namespace UnityHue
 			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
 
-		public static KeyValuePair<string, object>[] StateToParameters(HueLampState state)
+		public KeyValuePair<string, object>[] StateToParameters()
 		{
 			var list = new List<KeyValuePair<string, object>>();
 			list.Add(new KeyValuePair<string, object>(HueKeys.ON, state.on));
-			list.Add(new KeyValuePair<string, object>(HueKeys.BRIGHTNESS, state.brightness));
-			list.Add(new KeyValuePair<string, object>(HueKeys.HUE, state.hue));
-			list.Add(new KeyValuePair<string, object>(HueKeys.SATURATION, state.saturation));
-			list.Add(new KeyValuePair<string, object>(HueKeys.ALERT, state.alert));
-			list.Add(new KeyValuePair<string, object>(HueKeys.EFFECT, state.effect));
+			list.Add(new KeyValuePair<string, object>(HueKeys.ALERT, "none"));
 			list.Add(new KeyValuePair<string, object>(HueKeys.TRANSITION, state.transitionTime));
+
+			if (isDimmable)
+			{
+				list.Add(new KeyValuePair<string, object>(HueKeys.BRIGHTNESS, state.brightness));
+			}
+			if (isColor)
+			{
+				list.Add(new KeyValuePair<string, object>(HueKeys.EFFECT, state.effect));
+				list.Add(new KeyValuePair<string, object>(HueKeys.HUE, state.hue));
+				list.Add(new KeyValuePair<string, object>(HueKeys.SATURATION, state.saturation));
+			}
+
 			return list.ToArray();
 		}
 
 		/// <summary>
-		/// Deletes the lamp.
+		/// Deletes the light.
 		/// </summary>
 		public void Delete()
 		{
-			HueBridge.instance.DeleteLamp(id, HueErrorInfo.LogError);
+			HueBridge.instance.DeleteLight(id, HueErrorInfo.LogErrors);
+		}
+
+		private static Color fullBrightNonColor = new Color32(255, 255, 225, 255);
+
+		// Returns the RGB color of this light.
+		public Color getRGB()
+		{
+			if (isColor)
+			{
+				return Color.HSVToRGB((float)state.hue / 65535f, (float)state.saturation / 254, (float)state.brightness / 254);
+			}
+
+			// Not a color bulb, but it does have a warm tint.
+			float brightMultiplier = (float)state.brightness / 254.0f;
+			return new Color(fullBrightNonColor.r * brightMultiplier, fullBrightNonColor.g * brightMultiplier, fullBrightNonColor.b * brightMultiplier);
 		}
 
 		/// <summary>

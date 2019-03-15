@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using UnityHue;
+using System.Collections.Generic;
 
 namespace UnityHue.Examples
 {
@@ -12,7 +12,7 @@ namespace UnityHue.Examples
 		public GameObject createUserScreen;
 		public Text createUserText;
 		public Button createUserButton;
-		public RectTransform lampMenu;
+		public RectTransform lightMenu;
 		public string applicationName = "UHue", deviceName = "MyHue";
 
 
@@ -34,10 +34,10 @@ namespace UnityHue.Examples
 		{
 			Debug.Log("Retrieved lights");
 			createUserScreen.SetActive(false);
-			foreach (var lamp in HueBridge.instance.Lights)
+			foreach (var light in HueBridge.instance.Lights)
 			{
-				GameObject representation = Instantiate(hueUIRepresentationPrefab, lampMenu) as GameObject;
-				representation.GetComponent<HueUIRepresentation>().Initialize(lamp);
+				GameObject representation = Instantiate(hueUIRepresentationPrefab, lightMenu) as GameObject;
+				representation.GetComponent<HueUIRepresentation>().Initialize(light);
 			}
 			storer.Save();
 		}
@@ -63,27 +63,38 @@ namespace UnityHue.Examples
 			createUserButton.gameObject.SetActive(false);
 		}
 
-		public void HandleLightsError(HueErrorInfo error)
+		public void HandleLightsError(List<HueErrorInfo> errors)
 		{
-			Debug.LogWarning(error);
-			if (!error.IsRequestError)
+			bool isRequestError = false;
+
+			foreach (HueErrorInfo error in errors)
+			{
+				Debug.LogWarning(error);
+				isRequestError |= error.IsRequestError;
+			}
+
+			if (!isRequestError)
 			{
 				return;
 			}
+
 			Debug.Log("Connecting to a previously stored hue failed, trying to discover new bridges");
 			HueBridge.instance.DiscoverBridges(OnBridgesDiscovered);
 		}
 
-		public void OnRegistrationError(HueErrorInfo error)
+		public void OnRegistrationError(List<HueErrorInfo> errors)
 		{
+			HueErrorInfo error = errors[0];
+
 			if (error.errorCode == 101)
 			{
 				createUserText.text = "The Link Button on the Bridge wasn't pressed. Press it and try again";
 				createUserButton.gameObject.SetActive(true);
 			}
 			else
-				HueErrorInfo.LogError(error);
-
+			{
+				HueErrorInfo.LogErrors(errors);
+			}
 		}
 	}
 }

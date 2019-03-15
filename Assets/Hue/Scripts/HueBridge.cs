@@ -23,7 +23,7 @@ namespace UnityHue
 		[SerializeField]
 		private HueBridgeInfo currentBridge;
 		[SerializeField]
-		protected List<HueLamp> lamps = new List<HueLamp>();
+		protected List<HueLight> lights = new List<HueLight>();
 		[SerializeField]
 		protected List<HueGroup> groups = new List<HueGroup>();
 		public List<HueBridgeInfo> bridges { get; private set; }
@@ -45,10 +45,10 @@ namespace UnityHue
 		/// <param name="onFinished">On finished.</param>
 		public void DiscoverBridges(Action onFinished = null)
 		{
-			DiscoverBridges(onFinished, HueErrorInfo.LogError);
+			DiscoverBridges(onFinished, HueErrorInfo.LogErrors);
 		}
 
-		public void DiscoverBridges(Action onFinished, Action<HueErrorInfo> errorCallback)
+		public void DiscoverBridges(Action onFinished, Action<List<HueErrorInfo>> errorCallback)
 		{
 			StartCoroutine(GetBridgesEnumerator(
 				(bridges) =>
@@ -69,15 +69,15 @@ namespace UnityHue
 
 		public void UpdateLights(Action onFinished = null)
 		{
-			UpdateLights(onFinished, HueErrorInfo.LogError);
+			UpdateLights(onFinished, HueErrorInfo.LogErrors);
 		}
 
-		public void UpdateLights(Action onFinished, Action<HueErrorInfo> errorCallback)
+		public void UpdateLights(Action onFinished, Action<List<HueErrorInfo>> errorCallback)
 		{
 			DiscoverLights(
-				(lamps) =>
+				(lights) =>
 				{
-					this.lamps = lamps;
+					this.lights = lights;
 					if (onFinished != null)
 					{
 						onFinished();
@@ -89,10 +89,10 @@ namespace UnityHue
 
 		public void UpdateGroups(Action onFinished = null)
 		{
-			UpdateGroups(onFinished, HueErrorInfo.LogError);
+			UpdateGroups(onFinished, HueErrorInfo.LogErrors);
 		}
 
-		public void UpdateGroups(Action onFinished, Action<HueErrorInfo> errorCallback)
+		public void UpdateGroups(Action onFinished, Action<List<HueErrorInfo>> errorCallback)
 		{
 			DiscoverGroups(
 				(groups) =>
@@ -107,17 +107,17 @@ namespace UnityHue
 			);
 		}
 
-		public void DiscoverLights(Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
+		public void DiscoverLights(Action<List<HueLight>> lightsCallback, Action<List<HueErrorInfo>> errorCallback)
 		{
-			StartCoroutine(DiscoverLightsEnumerator(lampsCallback, errorCallback));
+			StartCoroutine(DiscoverLightsEnumerator(lightsCallback, errorCallback));
 		}
 
-		public void DiscoverGroups(Action<List<HueGroup>> groupsCallBack, Action<HueErrorInfo> errorCallback)
+		public void DiscoverGroups(Action<List<HueGroup>> groupsCallBack, Action<List<HueErrorInfo>> errorCallback)
 		{
 			StartCoroutine(DiscoverGroupsEnumerator(groupsCallBack, errorCallback));
 		}
 
-		//public void CreateUser(Action onFinished = null, Action<HueErrorInfo> errorCallback = null)
+		//public void CreateUser(Action onFinished = null, Action<List<HueErrorInfo>> errorCallback = null)
 		//{
 		//	CreateUser(
 		//		(userName) =>
@@ -133,7 +133,7 @@ namespace UnityHue
 		//	);
 		//}
 
-		public void CreateUser(string applicationName, string deviceName, Action onFinished = null, Action<HueErrorInfo> errorCallback = null)
+		public void CreateUser(string applicationName, string deviceName, Action onFinished = null, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			CreateUser(
 				applicationName,
@@ -151,42 +151,25 @@ namespace UnityHue
 			);
 		}
 
-		//public void CreateUser(Action<string> generatedUsername, Action<HueErrorInfo> errorCallback)
-		//{
-		//	CreateUser(currentBridge.applicationName, currentBridge.deviceName, generatedUsername, errorCallback);
-		//}
-
-		public void CreateUser(string applicationName, string deviceName, Action<string> generatedUsername, Action<HueErrorInfo> errorCallback)
+		public void CreateUser(string applicationName, string deviceName, Action<string> generatedUsername, Action<List<HueErrorInfo>> errorCallback)
 		{
 			StartCoroutine(CreateUserEnumerator(applicationName, deviceName, generatedUsername, errorCallback));
 		}
 
-		/// <summary>
-		/// Deletes the lamp, careful with this one
-		/// </summary>
-		/// <param name="lampName">Lamp name.</param>
-		/// <param name="successCallback">Success callback.</param>
-		/// <param name="errorCallback">Error callback.</param>
-		public void DeleteLamp(string id, Action<HueErrorInfo> errorCallback = null)
+		public void DeleteLight(string id, Action<List<HueErrorInfo>> errorCallback = null)
 		{
-			StartCoroutine(DeleteLampEnumerator(id, errorCallback));
+			StartCoroutine(DeleteLightEnumerator(id, errorCallback));
 		}
 
-		/// <summary>
-		/// Deletes a group, careful with this one
-		/// </summary>
-		/// <param name="lampName">Lamp name.</param>
-		/// <param name="successCallback">Success callback.</param>
-		/// <param name="errorCallback">Error callback.</param>
-		public void DeleteGroup(string id, Action<HueErrorInfo> errorCallback = null)
+		public void DeleteGroup(string id, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			StartCoroutine(DeleteGroupEnumerator(id, errorCallback));
 		}
 
-		// Gets a lamp's current data from the bridge and updates the client's data about it.
-		public void UpdateLampFromBridge(string id, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback = null)
+		// Gets a light's current data from the bridge and updates the client's data about it.
+		public void UpdateLightFromBridge(string id, HueLight lightToUpdate, Action<List<HueErrorInfo>> errorCallback = null)
 		{
-			StartCoroutine(UpdateLampFromBridgeEnumerator(id, lampToUpdate, errorCallback));
+			StartCoroutine(UpdateLightFromBridgeEnumerator(id, lightToUpdate, errorCallback));
 		}
 
 		public string GetHueStateString()
@@ -245,20 +228,21 @@ namespace UnityHue
 			bridgesCallback(list);
 		}
 
-		void ProcessLights(JSON response, Action<List<HueLamp>> lampsCallback)
+		void ProcessLights(JSON response, Action<List<HueLight>> lightsCallback)
 		{
-			Debug.LogFormat("Lights: {0}", response);
-
-			var list = new List<HueLamp>();
+			var list = new List<HueLight>();
 			foreach (var id in response.getKeyList())
 			{
 				var lightJson = response.getJSON(id);
+
+				Debug.LogFormat("Light {0}: {1}", id, lightJson);
+
 				//var lightDict = kv.Value as Dictionary<string, object>;
-				var lamp = new HueLamp(id);
-				ProcessLampUpdate(lightJson, lamp);
-				list.Add(lamp);
+				var light = new HueLight(id);
+				ProcessLightUpdate(lightJson, light);
+				list.Add(light);
 			}
-			lampsCallback(list);
+			lightsCallback(list);
 		}
 
 		void ProcessGroups(JSON response, Action<List<HueGroup>> groupCallBack)
@@ -276,21 +260,25 @@ namespace UnityHue
 			groupCallBack(list);
 		}
 
-		void ProcessLampUpdate(JSON json, HueLamp lampToUpdate)
+		void ProcessLightUpdate(JSON json, HueLight lightToUpdate)
 		{
-			lampToUpdate.name = json.getString(HueKeys.NAME, "");
-			lampToUpdate.modelID = json.getString(HueKeys.MODEL_ID, "");
-			lampToUpdate.type = json.getString(HueKeys.TYPE, "");
-			lampToUpdate.softwareVersion = json.getString(HueKeys.SOFTWARE_VERSION, "");
+			lightToUpdate.name = json.getString(HueKeys.NAME, "");
+			lightToUpdate.modelID = json.getString(HueKeys.MODEL_ID, "");
+			lightToUpdate.type = json.getString(HueKeys.TYPE, "");
+			lightToUpdate.softwareVersion = json.getString(HueKeys.SOFTWARE_VERSION, "");
+
+			lightToUpdate.isColor = (lightToUpdate.type == "Extended color light");
+			lightToUpdate.isDimmable = (lightToUpdate.isColor || (lightToUpdate.type == "Dimmable light"));
+
 			var stateJson = json.getJSON(HueKeys.STATE);
-			lampToUpdate.lampState = GetStateFromJSON(stateJson);
+			lightToUpdate.state = GetStateFromJSON(stateJson);
 		}
 
 		#endregion
 
 		#region Request Enumerators
 
-		IEnumerator GetBridgesEnumerator(Action<List<HueBridgeInfo>> bridgesCallback, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator GetBridgesEnumerator(Action<List<HueBridgeInfo>> bridgesCallback, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			var www = new WWWWrapper(hueDiscoveryServer);
 			yield return www.waitToFinish();
@@ -305,7 +293,7 @@ namespace UnityHue
 			string applicationName,
 			string deviceName,
 			Action<string> generatedUserName,
-			Action<HueErrorInfo> errorCallback = null
+			Action<List<HueErrorInfo>> errorCallback = null
 		)
 		{
 			var body = new Dictionary<string, object>()
@@ -327,19 +315,19 @@ namespace UnityHue
 			}
 		}
 
-		IEnumerator DeleteLampEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator DeleteLightEnumerator(string id, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			string url = string.Format("{0}/lights/{1}", BaseURLWithUserName, id);
 			yield return DeleteEnumerator(url, errorCallback);
 		}
 
-		IEnumerator DeleteGroupEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator DeleteGroupEnumerator(string id, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			string url = string.Format("{0}/groups/{1}", BaseURLWithUserName, id);
 			yield return DeleteEnumerator(url, errorCallback);
 		}
 
-		IEnumerator DeleteEnumerator(string url, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator DeleteEnumerator(string url, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			var www = new WWWWrapper(url, method: HTTPMethod.DELETE);
 			yield return www.waitToFinish();
@@ -347,7 +335,7 @@ namespace UnityHue
 		}
 
 
-		IEnumerator UpdateLampFromBridgeEnumerator(string id, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator UpdateLightFromBridgeEnumerator(string id, HueLight lightToUpdate, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			string url = string.Format("{0}/lights/{1}", BaseURLWithUserName, id);
 
@@ -356,11 +344,11 @@ namespace UnityHue
 
 			if (isValidJsonResponse(www, errorCallback))
 			{
-				ProcessLampUpdate(www.responseJSON, lampToUpdate);
+				ProcessLightUpdate(www.responseJSON, lightToUpdate);
 			}
 		}
 
-		IEnumerator DiscoverLightsEnumerator(Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
+		IEnumerator DiscoverLightsEnumerator(Action<List<HueLight>> lightsCallback, Action<List<HueErrorInfo>> errorCallback)
 		{
 			string url = string.Format("{0}/{1}/lights", BaseURL, currentBridge.userName);
 
@@ -369,11 +357,11 @@ namespace UnityHue
 
 			if (isValidJsonResponse(www, errorCallback))
 			{
-				ProcessLights(www.responseJSON, lampsCallback);
+				ProcessLights(www.responseJSON, lightsCallback);
 			}
 		}
 
-		IEnumerator DiscoverGroupsEnumerator(Action<List<HueGroup>> groupsCallback, Action<HueErrorInfo> errorCallback)
+		IEnumerator DiscoverGroupsEnumerator(Action<List<HueGroup>> groupsCallback, Action<List<HueErrorInfo>> errorCallback)
 		{
 			string url = string.Format("{0}/{1}/groups", BaseURL, currentBridge.userName);
 
@@ -387,7 +375,7 @@ namespace UnityHue
 		}
 
 		IEnumerator SendRequestEnumerator(WWWWrapper www, Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback = null)
+			Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			yield return www.waitToFinish();
 
@@ -401,25 +389,18 @@ namespace UnityHue
 
 		#region Helper
 
-		private bool isValidJsonResponse(WWWWrapper www, System.Action<HueErrorInfo> errorCallback)
+		private bool isValidJsonResponse(WWWWrapper www, System.Action<List<HueErrorInfo>> errorCallback)
 		{
+			var errorInfos = new List<HueErrorInfo>();
 			JSON response = www.responseJSON;
 
 			if (response == null)
 			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(www.error, null));
-				}
-				return false;
+				errorInfos.Add(new HueErrorInfo(www.error, null));
 			}
 			else if (!response.isValid)
 			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(null, www.responseText));
-				}
-				return false;
+				errorInfos.Add(new HueErrorInfo(null, www.responseText));
 			}
 			else
 			{
@@ -429,22 +410,23 @@ namespace UnityHue
 					{
 						if (json.hasKey(HueKeys.ERROR))
 						{
-							if (errorCallback != null)
-							{
-								errorCallback(new HueErrorInfo(json));
-							}
-							return false;
+							errorInfos.Add(new HueErrorInfo(json));
 						}
 					}
 				}
 				else if (response.hasKey(HueKeys.ERROR))
 				{
-					if (errorCallback != null)
+					if (response.hasKey(HueKeys.ERROR))
 					{
-						errorCallback(new HueErrorInfo(response));
+						errorInfos.Add(new HueErrorInfo(response));
 					}
-					return false;
 				}
+			}
+
+			if (errorInfos.Count > 0 && errorCallback != null)
+			{
+				errorCallback(errorInfos);
+				return false;
 			}
 
 			return true;
@@ -464,11 +446,11 @@ namespace UnityHue
 				return "http://" + currentBridge.ip + "/api/" + currentBridge.userName;
 			}
 		}
-		public List<HueLamp> Lights
+		public List<HueLight> Lights
 		{
 			get
 			{
-				return lamps;
+				return lights;
 			}
 		}
 		public List<HueGroup> Groups
@@ -486,9 +468,9 @@ namespace UnityHue
 			}
 		}
 
-		HueLampState GetStateFromJSON(JSON json)
+		HueLightState GetStateFromJSON(JSON json)
 		{
-			var state = new HueLampState();
+			var state = new HueLightState();
 			state.on = json.getBool(HueKeys.ON, false);
 			state.reachable = json.getBool(HueKeys.REACHABLE, false);
 			state.hue = json.getInt(HueKeys.HUE, 0);
@@ -500,7 +482,7 @@ namespace UnityHue
 			return state;
 		}
 
-		public void SendRequest(WWWWrapper request, Action<string> successCallback, Action<HueErrorInfo> errorCallback = null)
+		public void SendRequest(WWWWrapper request, Action<string> successCallback, Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			StartCoroutine(SendRequestEnumerator(request, successCallback, errorCallback));
 		}

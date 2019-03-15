@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.Reflection;
 
 namespace UnityHue{
-	[CustomPropertyDrawer(typeof(HueLamp))]
-	public class HueLampDrawer : PropertyDrawer {
+	[CustomPropertyDrawer(typeof(HueLight))]
+	public class HueLightDrawer : PropertyDrawer {
 		
 		
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -21,9 +21,11 @@ namespace UnityHue{
 				{
 					string id = property.FindPropertyRelative("id").stringValue;
 					//pretty ugly but
-					HueLamp lamp = HueBridge.instance.Lights.Find(x => x.id == id);
-					if(lamp != null)
-						lamp.SetState();
+					HueLight light = HueBridge.instance.Lights.Find(x => x.id == id);
+					if (light != null)
+					{
+						light.SetState();
+					}
 				}
 			}
 		}

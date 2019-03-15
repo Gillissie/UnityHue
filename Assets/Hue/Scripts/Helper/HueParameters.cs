@@ -10,7 +10,7 @@ namespace UnityHue{
 
 		/// <summary>
 		/// Transforms a RGB into color into the corresponding hue, brightness and saturation
-		/// parameters for the Hue lamp.
+		/// parameters for the Hue light.
 		/// </summary>
 		/// <param name="color">Color.</param>
 		/// <param name="hue">Hue.</param>
@@ -18,7 +18,7 @@ namespace UnityHue{
 		/// <param name="brightness">Brightness.</param>
 		public static void ColorValues(Color color, out int hue, out int saturation, out int brightness)
 		{
-			Vector3 hsv = HueLamp.HueHSVfromRGB(color);
+			Vector3 hsv = HueLight.HueHSVfromRGB(color);
 			hue = Mathf.RoundToInt(hsv.x);
 			saturation = Mathf.RoundToInt(hsv.y);
 			brightness = Mathf.RoundToInt(hsv.z);

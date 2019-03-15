@@ -25,32 +25,35 @@ namespace UnityHue
 		}
 
 		public void SetName(string newGroupName, Action<string> successCallback = null,
-			Action<HueErrorInfo> errorCallback = null)
+			Action<List<HueErrorInfo>> errorCallback = null)
 		{
 			ModifyGroup(successCallback, errorCallback, newGroupName);
 		}
 
-		public void SetLights(Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback, params HueLamp[] lamps)
+		public void SetLights(Action<string> successCallback, Action<List<HueErrorInfo>> errorCallback, params HueLight[] lights)
 		{
-			ModifyGroup(successCallback, errorCallback, null, lamps);
+			ModifyGroup(successCallback, errorCallback, null, lights);
 		}
 
 		/// <summary>
 		/// Modifies the group name and lights array both at once 
 		/// If you just want to modify one property set newGroupName
-		/// to null or don't supply any hue lamps (See SetName or SetLights)
+		/// to null or don't supply any hue lights (See SetName or SetLights)
 		/// </summary>
 		/// <param name="successCallback">Success callback.</param>
 		/// <param name="errorCallback">Error callback.</param>
 		/// <param name="newGroupName">New group name.</param>
-		/// <param name="lamps">Lamps.</param>
-		public void ModifyGroup(Action<string> successCallback, Action<HueErrorInfo> errorCallback,
-			string newGroupName = null, params HueLamp[] lamps)
+		/// <param name="lights">Lights.</param>
+		public void ModifyGroup(
+			Action<string> successCallback,
+			Action<List<HueErrorInfo>> errorCallback,
+			string newGroupName = null,
+			params HueLight[] lights
+		)
 		{
 			string url = HueBridge.instance.BaseURLWithUserName + "/groups/" + id;
 			var list = new List<string>();
-			foreach (var item in lamps)
+			foreach (var item in lights)
 			{
 				list.Add(item.id);
 			}
@@ -71,7 +74,7 @@ namespace UnityHue
 		}
 
 		public void SetState(Action<string> successCallback,
-		                     Action<HueErrorInfo> errorCallback,
+		                     Action<List<HueErrorInfo>> errorCallback,
 		                     params KeyValuePair<string, object>[] parameters
 		                    )
 		{
@@ -93,23 +96,27 @@ namespace UnityHue
 		/// </summary>
 		public void Delete()
 		{
-			HueBridge.instance.DeleteGroup(id, HueErrorInfo.LogError);
+			HueBridge.instance.DeleteGroup(id, HueErrorInfo.LogErrors);
 		}
-		public static void CreateHueGroup(Action<string> succesCallback, Action<HueErrorInfo> errorCallback,
-			string groupName, params HueLamp[] lamps)
+		public static void CreateHueGroup(
+			Action<string> succesCallback,
+			Action<List<HueErrorInfo>> errorCallback,
+			string groupName,
+			params HueLight[] lights
+		)
 		{
 			var list = new List<string>();
-			foreach (var item in lamps)
+			foreach (var item in lights)
 			{
 				list.Add(item.id);
 			}
 			CreateHueGroup(succesCallback, errorCallback, groupName, list);
 		}
 
-		public static void CreateHueGroup(Action<string> sucessCallback, Action<HueErrorInfo> errorCallback,
+		public static void CreateHueGroup(Action<string> sucessCallback, Action<List<HueErrorInfo>> errorCallback,
 			string groupName, List<string> ids)
 		{
-			string url = HueBridge.instance.BaseURLWithUserName + "/groups";
+			string url = string.Format("{0}/groups", HueBridge.instance.BaseURLWithUserName);
 
 			var body = new Dictionary<string, object>()
 			{

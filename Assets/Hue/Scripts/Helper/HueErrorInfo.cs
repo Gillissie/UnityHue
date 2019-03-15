@@ -37,7 +37,7 @@ namespace UnityHue
 
 			if (errorObject.isValid)
 			{
-				Debug.LogFormat("error response: {0}", errorObject);
+				Debug.LogErrorFormat("{0}", errorObject);
 
 				if (errorObject.hasKey(HueKeys.TYPE))
 				{
@@ -59,9 +59,12 @@ namespace UnityHue
 		/// error information to the console
 		/// </summary>
 		/// <param name="error">Error.</param>
-		public static void LogError(HueErrorInfo error)
+		public static void LogErrors(List<HueErrorInfo> errors)
 		{
-			Debug.LogWarning(error.ToString());
+			foreach (HueErrorInfo error in errors)
+			{
+				Debug.LogWarning(error.ToString());
+			}
 		}
 
 		public override string ToString()
