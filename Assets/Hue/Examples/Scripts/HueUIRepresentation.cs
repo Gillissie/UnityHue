@@ -18,12 +18,20 @@ namespace UnityHue.Examples{
 		{
 			this.lamp = lamp;
 			nameText.text = lamp.name;
+
+			onToggle.isOn = lamp.lampState.on;
+			hueSlider.value = lamp.lampState.hue;
+			brightnessSlider.value = lamp.lampState.brightness;
+			saturationSlider.value = lamp.lampState.saturation;
+			transitionTime.value = lamp.lampState.transitionTime;
 		}
 
 		public void SetState()
 		{
-			if(lamp == null)
+			if (lamp == null)
+			{
 				return;
+			}
 			lamp.SetState(
 				HueParameters.LightOnParameter(onToggle.isOn),
 				HueParameters.BrightnessParameter((int) brightnessSlider.value),
@@ -32,29 +40,35 @@ namespace UnityHue.Examples{
 				HueParameters.TransitionParameter((int) transitionTime.value)
 			);
 		}
+
 		public void SetColorLoop()
 		{
-			if(lamp == null)
+			if (lamp == null)
+			{
 				return;
+			}
 			effectActive = !effectActive;
-			lamp.SetState(
-				HueParameters.EffectParameter(effectActive ? "colorloop" : "none")
-			);
+			lamp.SetState(HueParameters.EffectParameter(effectActive ? "colorloop" : "none"));
 		}
+
 		public void SetBlink()
 		{
-			if(lamp == null)
+			if (lamp == null)
+			{
 				return;
-			lamp.SetState(
-				HueParameters.AlertParameter()
-			);
+			}
+			lamp.SetState(HueParameters.AlertParameter());
 		}
+
 		public void SetRacingColors(float timeOut = 1f)
 		{
-			if(lamp == null)
+			if (lamp == null)
+			{
 				return;
+			}
 			StartCoroutine(RacingCountdown(timeOut));
 		}
+
 		IEnumerator RacingCountdown(float timeOut = 1f)
 		{
 			//Change the color instantly (no transition time)

@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace UnityHue{
 	/// <summary>
@@ -15,29 +16,29 @@ namespace UnityHue{
 		/// <param name="hue">Hue.</param>
 		/// <param name="saturation">Saturation.</param>
 		/// <param name="brightness">Brightness.</param>
-		public static void ColorParameter(Color color, out JsonParameter hue, out JsonParameter saturation, out JsonParameter brightness)
+		public static void ColorValues(Color color, out int hue, out int saturation, out int brightness)
 		{
 			Vector3 hsv = HueLamp.HueHSVfromRGB(color);
-			hue = HueParameter(Mathf.RoundToInt(hsv.x));
-			saturation = SaturationParameter(Mathf.RoundToInt(hsv.y));
-			brightness = BrightnessParameter(Mathf.RoundToInt(hsv.z));
+			hue = Mathf.RoundToInt(hsv.x);
+			saturation = Mathf.RoundToInt(hsv.y);
+			brightness = Mathf.RoundToInt(hsv.z);
 		}
 
-		public static JsonParameter LightOnParameter(bool on)
+		public static KeyValuePair<string, object> LightOnParameter(bool on)
 		{
-			return new JsonParameter(HueKeys.ON, on);
+			return new KeyValuePair<string, object>(HueKeys.ON, on);
 		}	
-		public static JsonParameter BrightnessParameter(int brightness)
+		public static KeyValuePair<string, object> BrightnessParameter(int brightness)
 		{
-			return new JsonParameter(HueKeys.BRIGHTNESS, brightness);
+			return new KeyValuePair<string, object>(HueKeys.BRIGHTNESS, brightness);
 		}
-		public static JsonParameter HueParameter(int hue)
+		public static KeyValuePair<string, object> HueParameter(int hue)
 		{
-			return new JsonParameter(HueKeys.HUE, hue);
+			return new KeyValuePair<string, object>(HueKeys.HUE, hue);
 		}
-		public static JsonParameter SaturationParameter(int sat)
+		public static KeyValuePair<string, object> SaturationParameter(int sat)
 		{
-			return new JsonParameter(HueKeys.SATURATION, sat);
+			return new KeyValuePair<string, object>(HueKeys.SATURATION, sat);
 		}
 		/// <summary>
 		/// Creates a transitiontime parameter. This sets the duration of the transition
@@ -46,9 +47,9 @@ namespace UnityHue{
 		/// </summary>
 		/// <returns>The parameter.</returns>
 		/// <param name="transitionTime">Transition time.</param>
-		public static JsonParameter TransitionParameter(int transitionTime = 4)
+		public static KeyValuePair<string, object> TransitionParameter(int transitionTime = 4)
 		{
-			return new JsonParameter(HueKeys.TRANSITION, transitionTime);
+			return new KeyValuePair<string, object>(HueKeys.TRANSITION, transitionTime);
 		}
 		/// <summary>
 		/// Creates an effect parameter. Options currently are "none" and "colorloop" cycling 
@@ -56,9 +57,9 @@ namespace UnityHue{
 		/// </summary>
 		/// <returns>The parameter.</returns>
 		/// <param name="alertType">Alert type.</param>
-		public static JsonParameter EffectParameter(string effectType = HueKeys.COLOR_LOOP)
+		public static KeyValuePair<string, object> EffectParameter(string effectType = HueKeys.COLOR_LOOP)
 		{
-			return new JsonParameter(HueKeys.EFFECT, effectType);
+			return new KeyValuePair<string, object>(HueKeys.EFFECT, effectType);
 		}
 		/// <summary>
 		/// Creates an alert parameter. Options currently are "none", "select" performing one 
@@ -66,9 +67,9 @@ namespace UnityHue{
 		/// </summary>
 		/// <returns>The parameter.</returns>
 		/// <param name="alertType">Alert type.</param>
-		public static JsonParameter AlertParameter(string alertType = HueKeys.SELECT)
+		public static KeyValuePair<string, object> AlertParameter(string alertType = HueKeys.SELECT)
 		{
-			return new JsonParameter(HueKeys.ALERT, alertType);
+			return new KeyValuePair<string, object>(HueKeys.ALERT, alertType);
 		}
 	}
 }

@@ -3,6 +3,7 @@ using UnityEngine.Networking;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using gilligames;
 
 using MiniJSON;
 
@@ -32,26 +33,29 @@ namespace UnityHue
 			this.id = id;
 		}
 
-		public void SetColor(Color color, params JsonParameter[] additionalParameters)
+		public void SetColor(Color color, params KeyValuePair<string, object>[] additionalParameters)
 		{
 			SetColor(color, null, null, additionalParameters);
 		}
 
 		public void SetColor(Color color, Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback, params JsonParameter[] additionalParameters)
+		                     Action<HueErrorInfo> errorCallback,
+		                     params KeyValuePair<string, object>[] additionalParameters
+		                    )
 		{
-			JsonParameter hue, bri, sat;
-			HueParameters.ColorParameter(color, out hue, out sat, out bri);
-			var list = new List<JsonParameter>(additionalParameters);
-			list.Add(hue);
-			list.Add(bri);
-			list.Add(sat);
+			int hue, bri, sat;
+			HueParameters.ColorValues(color, out hue, out sat, out bri);
+			var list = new List<KeyValuePair<string, object>>(additionalParameters);
+			list.Add(new KeyValuePair<string, object>(HueKeys.HUE, hue));
+			list.Add(new KeyValuePair<string, object>(HueKeys.BRIGHTNESS, bri));
+			list.Add(new KeyValuePair<string, object>(HueKeys.SATURATION, sat));
+
 			SetState(successCallback, errorCallback, list.ToArray());
 		}
 
-		public void UpdateLamp(Action<HueErrorInfo> errorCallback = null)
+		public void UpdateLampFromBridge(Action<HueErrorInfo> errorCallback = null)
 		{
-			HueBridge.instance.UpdateLamp(id, this, errorCallback);
+			HueBridge.instance.UpdateLampFromBridge(id, this, errorCallback);
 		}
 
 		public void SetState()
@@ -59,7 +63,7 @@ namespace UnityHue
 			SetState(StateToParameters(this.lampState));
 		}
 
-		public void SetState(params JsonParameter[] parameters)
+		public void SetState(params KeyValuePair<string, object>[] parameters)
 		{
 			SetState(null, null, parameters);
 		}
@@ -85,31 +89,47 @@ namespace UnityHue
 		/// <param name="errorCallback">Error callback.</param>
 		/// <param name="parameters">Parameters.</param>
 		public void SetState(Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback, params JsonParameter[] parameters)
+		                     Action<HueErrorInfo> errorCallback,
+		                     params KeyValuePair<string, object>[] parameters
+		                    )
 		{
-			string url = HueBridge.instance.BaseURLWithUserName + "/lights/" + id + "/state";
-			UnityWebRequest stateRequest = UnityWebRequest.Put(url, JsonHelper.CreateJsonParameterString(parameters));
-			HueBridge.instance.SendRequest(stateRequest, successCallback, errorCallback);
+			string url = string.Format("{0}/lights/{1}/state", HueBridge.instance.BaseURLWithUserName, id);
+
+			var body = new Dictionary<string, object>();
+			foreach (var kvp in parameters)
+			{
+				body.Add(kvp.Key, kvp.Value);
+			}
+
+			var www = new WWWWrapper(url, body, method: HTTPMethod.PUT);
+
+			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
 
 		public void SetName(string lampName, Action<string> successCallback = null, Action<HueErrorInfo> errorCallback = null)
 		{
-			string url = HueBridge.instance.BaseURLWithUserName + "/lights/" + id;
-			UnityWebRequest renameRequest = UnityWebRequest.Put(url,
-				JsonHelper.CreateJsonParameterString(new JsonParameter(HueKeys.NAME, lampName)));
-			HueBridge.instance.SendRequest(renameRequest, successCallback, errorCallback);
+			string url = string.Format("{0}/lights/{1}", HueBridge.instance.BaseURLWithUserName, id);
+
+			var body = new Dictionary<string, object>()
+			{
+				{ HueKeys.NAME, lampName }
+			};
+
+			var www = new WWWWrapper(url, body, method: HTTPMethod.PUT);
+
+			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
 
-		public static JsonParameter[] StateToParameters(HueLampState state)
+		public static KeyValuePair<string, object>[] StateToParameters(HueLampState state)
 		{
-			var list = new List<JsonParameter>();
-			list.Add(new JsonParameter(HueKeys.ON, state.on));
-			list.Add(new JsonParameter(HueKeys.BRIGHTNESS, state.brightness));
-			list.Add(new JsonParameter(HueKeys.HUE, state.hue));
-			list.Add(new JsonParameter(HueKeys.SATURATION, state.saturation));
-			list.Add(new JsonParameter(HueKeys.ALERT, state.alert));
-			list.Add(new JsonParameter(HueKeys.EFFECT, state.effect));
-			list.Add(new JsonParameter(HueKeys.TRANSITION, state.transitionTime));
+			var list = new List<KeyValuePair<string, object>>();
+			list.Add(new KeyValuePair<string, object>(HueKeys.ON, state.on));
+			list.Add(new KeyValuePair<string, object>(HueKeys.BRIGHTNESS, state.brightness));
+			list.Add(new KeyValuePair<string, object>(HueKeys.HUE, state.hue));
+			list.Add(new KeyValuePair<string, object>(HueKeys.SATURATION, state.saturation));
+			list.Add(new KeyValuePair<string, object>(HueKeys.ALERT, state.alert));
+			list.Add(new KeyValuePair<string, object>(HueKeys.EFFECT, state.effect));
+			list.Add(new KeyValuePair<string, object>(HueKeys.TRANSITION, state.transitionTime));
 			return list.ToArray();
 		}
 

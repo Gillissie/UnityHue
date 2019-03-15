@@ -32,6 +32,7 @@ namespace UnityHue.Examples
 		}
 		public void OnLightsRetrieved()
 		{
+			Debug.Log("Retrieved lights");
 			createUserScreen.SetActive(false);
 			foreach (var lamp in HueBridge.instance.Lights)
 			{
@@ -44,7 +45,7 @@ namespace UnityHue.Examples
 		public void OnBridgesDiscovered()
 		{
 			createUserScreen.SetActive(true);
-			if (HueBridge.instance.Bridges.Count < 1)
+			if (HueBridge.instance.bridges.Count < 1)
 			{
 				createUserText.text = "Couldn't find any bridges in your Network";
 				createUserButton.gameObject.SetActive(false);

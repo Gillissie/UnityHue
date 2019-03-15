@@ -93,6 +93,15 @@ namespace gilligames
 
 		public JSON(string inputString)
 		{
+			inputString = inputString.Trim();
+
+			// The json can't be an array at the root. It needs to be an object with a key/value pair,
+			// so if the input string is a root array, create a wrapper object named rootArray.
+			if (inputString.StartsWith("[") && inputString.EndsWith("]"))
+			{
+				inputString = string.Format("{{ \"rootArray\":{0} }}", inputString);
+			}
+
 			jsonString = inputString;
 
 			if (jsonString == null)
@@ -100,8 +109,8 @@ namespace gilligames
 				// Prevent Trim() error below.
 				jsonString = "";
 			}
-			
-			if (jsonString.Trim() == "")
+
+			if (jsonString == "")
 			{
 				string stack = UnityEngine.StackTraceUtility.ExtractStackTrace().Replace("\n", " -> ");
 				Debug.LogError("Null or empty JSON sent. Stack: " + stack);

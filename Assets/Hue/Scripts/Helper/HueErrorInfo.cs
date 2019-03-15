@@ -37,6 +37,8 @@ namespace UnityHue
 
 			if (errorObject.isValid)
 			{
+				Debug.LogFormat("error response: {0}", errorObject);
+
 				if (errorObject.hasKey(HueKeys.TYPE))
 				{
 					this.errorCode = errorObject.getInt(HueKeys.TYPE, 0);
@@ -74,10 +76,10 @@ namespace UnityHue
 			return builder.ToString();
 		}
 
-		public static bool JsonContainsErrorKey(object json)
-		{
-			return JsonHelper.UnravelJson(json, HueKeys.ERROR) != null;
-		}
+		//public static bool JsonContainsErrorKey(object json)
+		//{
+		//	return JsonHelper.UnravelJson(json, HueKeys.ERROR) != null;
+		//}
 
 		public bool IsRequestError
 		{

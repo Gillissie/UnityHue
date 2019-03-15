@@ -26,7 +26,7 @@ namespace UnityHue
 		protected List<HueLamp> lamps = new List<HueLamp>();
 		[SerializeField]
 		protected List<HueGroup> groups = new List<HueGroup>();
-		public List<HueBridgeInfo> Bridges { get; private set; }
+		public List<HueBridgeInfo> bridges { get; private set; }
 
 		void Awake()
 		{
@@ -51,15 +51,20 @@ namespace UnityHue
 		public void DiscoverBridges(Action onFinished, Action<HueErrorInfo> errorCallback)
 		{
 			StartCoroutine(GetBridgesEnumerator(
-				x =>
+				(bridges) =>
 				{
-					Bridges = x;
-					if (Bridges.Count > 0)
-						currentBridge = Bridges[0];
+					this.bridges = bridges;
+					if (bridges.Count > 0)
+					{
+						currentBridge = bridges[0];
+					}
 					if (onFinished != null)
+					{
 						onFinished();
+					}
 				},
-				errorCallback));
+				errorCallback
+			));
 		}
 
 		public void UpdateLights(Action onFinished = null)
@@ -69,12 +74,17 @@ namespace UnityHue
 
 		public void UpdateLights(Action onFinished, Action<HueErrorInfo> errorCallback)
 		{
-			DiscoverLights(x =>
-			{
-				lamps = x;
-				if (onFinished != null)
-					onFinished();
-			}, errorCallback);
+			DiscoverLights(
+				(lamps) =>
+				{
+					this.lamps = lamps;
+					if (onFinished != null)
+					{
+						onFinished();
+					}
+				},
+				errorCallback
+			);
 		}
 
 		public void UpdateGroups(Action onFinished = null)
@@ -84,12 +94,17 @@ namespace UnityHue
 
 		public void UpdateGroups(Action onFinished, Action<HueErrorInfo> errorCallback)
 		{
-			DiscoverGroups(x =>
-			{
-				groups = x;
-				if (onFinished != null)
-					onFinished();
-			}, errorCallback);
+			DiscoverGroups(
+				(groups) =>
+				{
+					this.groups = groups;
+					if (onFinished != null)
+					{
+						onFinished();
+					}
+				},
+				errorCallback
+			);
 		}
 
 		public void DiscoverLights(Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
@@ -102,36 +117,46 @@ namespace UnityHue
 			StartCoroutine(DiscoverGroupsEnumerator(groupsCallBack, errorCallback));
 		}
 
-		public void CreateUser(Action onFinished = null, Action<HueErrorInfo> errorCallback = null)
-		{
-			CreateUser((x) =>
-			{
-				currentBridge.userName = x;
-				if (onFinished != null)
-					onFinished();
-			}, errorCallback);
-		}
+		//public void CreateUser(Action onFinished = null, Action<HueErrorInfo> errorCallback = null)
+		//{
+		//	CreateUser(
+		//		(userName) =>
+		//		{
+		//			Debug.LogFormat("created user: {0}", userName);
+		//			currentBridge.userName = userName;
+		//			if (onFinished != null)
+		//			{
+		//				onFinished();
+		//			}
+		//		},
+		//		errorCallback
+		//	);
+		//}
 
 		public void CreateUser(string applicationName, string deviceName, Action onFinished = null, Action<HueErrorInfo> errorCallback = null)
 		{
-			CreateUser(applicationName, deviceName,
-				(x) =>
+			CreateUser(
+				applicationName,
+				deviceName,
+				(userName) =>
 				{
-					currentBridge.userName = x;
+					Debug.LogFormat("created user: {0}", userName);
+					currentBridge.userName = userName;
 					if (onFinished != null)
 					{
 						onFinished();
 					}
-				}, errorCallback);
+				},
+				errorCallback
+			);
 		}
 
-		public void CreateUser(Action<string> generatedUsername, Action<HueErrorInfo> errorCallback)
-		{
-			CreateUser(currentBridge.applicationName, currentBridge.deviceName, generatedUsername, errorCallback);
-		}
+		//public void CreateUser(Action<string> generatedUsername, Action<HueErrorInfo> errorCallback)
+		//{
+		//	CreateUser(currentBridge.applicationName, currentBridge.deviceName, generatedUsername, errorCallback);
+		//}
 
-		public void CreateUser(string applicationName, string deviceName, Action<string> generatedUsername,
-			Action<HueErrorInfo> errorCallback)
+		public void CreateUser(string applicationName, string deviceName, Action<string> generatedUsername, Action<HueErrorInfo> errorCallback)
 		{
 			StartCoroutine(CreateUserEnumerator(applicationName, deviceName, generatedUsername, errorCallback));
 		}
@@ -158,9 +183,10 @@ namespace UnityHue
 			StartCoroutine(DeleteGroupEnumerator(id, errorCallback));
 		}
 
-		public void UpdateLamp(string id, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback = null)
+		// Gets a lamp's current data from the bridge and updates the client's data about it.
+		public void UpdateLampFromBridge(string id, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback = null)
 		{
-			StartCoroutine(UpdateLampEnumerator(id, lampToUpdate, errorCallback));
+			StartCoroutine(UpdateLampFromBridgeEnumerator(id, lampToUpdate, errorCallback));
 		}
 
 		public string GetHueStateString()
@@ -177,14 +203,14 @@ namespace UnityHue
 
 		public StoredHueInfo GetStorableHueState()
 		{
-			return new StoredHueInfo(currentBridge, Bridges);
+			return new StoredHueInfo(currentBridge, bridges);
 		}
 
 		public void RestoreHueState(StoredHueInfo savedState)
 		{
 			if (savedState == null)
 				return;
-			Bridges = savedState.allBridges;
+			bridges = savedState.allBridges;
 			currentBridge = savedState.current;
 		}
 
@@ -192,63 +218,36 @@ namespace UnityHue
 
 		#region Private Functions
 
-		void ProcessBridges(string jsonResponse, Action<List<HueBridgeInfo>> ipCallback)
+		void ProcessBridges(JSON response, Action<List<HueBridgeInfo>> bridgesCallback)
 		{
-			// The bridges JSON response doesn't have an outer object, but the JSON class needs one, so we add it before parsing here.
-			jsonResponse = string.Format("{{ \"bridges\": {0} }}", jsonResponse);
-
-			Debug.LogFormat("Bridges: {0}", jsonResponse);
-
-			var response = new JSON(jsonResponse);
-
+			Debug.LogFormat("Bridges: {0}", response);
+			
 			var list = new List<HueBridgeInfo>();
 
-			if (response.isValid)
+			var responseList = response.getJsonArray("rootArray");
+			foreach (var item in responseList)
 			{
-				var responseList = response.getJsonArray("bridges");
-				foreach (var item in responseList)
+				var bridgeInfo = new HueBridgeInfo(item.getString("id", ""), item.getString("internalipaddress", ""));
+
+				if (item.hasKey("macaddress"))
 				{
-					var bridgeInfo = new HueBridgeInfo(item.getString("id", ""), item.getString("internalipaddress", ""));
-
-					if (item.hasKey("macaddress"))
-					{
-						bridgeInfo.macAdress = item.getString("macaddress", "");
-					}
-
-					if (item.hasKey("name"))
-					{
-						bridgeInfo.name = item.getString("name", "");
-					}
-
-					list.Add(bridgeInfo);
+					bridgeInfo.macAdress = item.getString("macaddress", "");
 				}
+
+				if (item.hasKey("name"))
+				{
+					bridgeInfo.name = item.getString("name", "");
+				}
+
+				list.Add(bridgeInfo);
 			}
-			ipCallback(list);
+
+			bridgesCallback(list);
 		}
 
-		void ProcessLights(string jsonResponse, Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
+		void ProcessLights(JSON response, Action<List<HueLamp>> lampsCallback)
 		{
-			Debug.LogFormat("Lights: {0}", jsonResponse);
-
-			var response = new JSON(jsonResponse);
-
-			if (!response.isValid)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(null, jsonResponse));
-				}
-				return;
-			}
-
-			if (response.hasKey("error"))
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(response));
-				}
-				return;
-			}
+			Debug.LogFormat("Lights: {0}", response);
 
 			var list = new List<HueLamp>();
 			foreach (var id in response.getKeyList())
@@ -262,27 +261,9 @@ namespace UnityHue
 			lampsCallback(list);
 		}
 
-		void ProcessGroups(string jsonResponse, Action<List<HueGroup>> groupCallBack, Action<HueErrorInfo> errorCallback)
+		void ProcessGroups(JSON response, Action<List<HueGroup>> groupCallBack)
 		{
-			Debug.LogFormat("Groups: {0}", jsonResponse);
-			var response = new JSON(jsonResponse);
-			if (!response.isValid)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(null, jsonResponse));
-				}
-				return;
-			}
-
-			if (response.hasKey(HueKeys.ERROR))
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(response));
-				}
-				return;
-			}
+			Debug.LogFormat("Groups: {0}", response);
 
 			var list = new List<HueGroup>();
 			foreach (var id in response.getKeyList())
@@ -293,29 +274,6 @@ namespace UnityHue
 				list.Add(group);
 			}
 			groupCallBack(list);
-		}
-
-		void ProcessLampUpdate(string jsonResponse, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback)
-		{
-			var response = new JSON(jsonResponse);
-			if (!response.isValid)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(null, jsonResponse));
-				}
-				return;
-			}
-
-			if (response.hasKey(HueKeys.ERROR))
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(response));
-				}
-				return;
-			}
-			ProcessLampUpdate(response, lampToUpdate);
 		}
 
 		void ProcessLampUpdate(JSON json, HueLamp lampToUpdate)
@@ -332,27 +290,23 @@ namespace UnityHue
 
 		#region Request Enumerators
 
-		IEnumerator GetBridgesEnumerator(Action<List<HueBridgeInfo>> ipCallback, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator GetBridgesEnumerator(Action<List<HueBridgeInfo>> bridgesCallback, Action<HueErrorInfo> errorCallback = null)
 		{
-			UnityWebRequest bridgesWebRequest = UnityWebRequest.Get(hueDiscoveryServer);
+			var www = new WWWWrapper(hueDiscoveryServer);
+			yield return www.waitToFinish();
 
-			yield return bridgesWebRequest.Send();
-
-			if (bridgesWebRequest.isNetworkError)
+			if (isValidJsonResponse(www, errorCallback))
 			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(bridgesWebRequest.error, null));
-				}
-			}
-			else
-			{
-				ProcessBridges(bridgesWebRequest.downloadHandler.text, ipCallback);
+				ProcessBridges(www.responseJSON, bridgesCallback);
 			}
 		}
 
-		IEnumerator CreateUserEnumerator(string applicationName, string deviceName,
-			Action<string> generatedUserName, Action<HueErrorInfo> errorCallback = null)
+		IEnumerator CreateUserEnumerator(
+			string applicationName,
+			string deviceName,
+			Action<string> generatedUserName,
+			Action<HueErrorInfo> errorCallback = null
+		)
 		{
 			var body = new Dictionary<string, object>()
 			{
@@ -362,6 +316,93 @@ namespace UnityHue
 			var www = new WWWWrapper(BaseURL, body);
 			yield return www.waitToFinish();
 
+			if (isValidJsonResponse(www, errorCallback))
+			{
+				JSON response = www.responseJSON.getJsonArray("rootArray")[0].getJSON("success");
+				var userName = response.getString(HueKeys.USER_NAME, "");
+				if (userName != "")
+				{
+					generatedUserName(userName);
+				}
+			}
+		}
+
+		IEnumerator DeleteLampEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
+		{
+			string url = string.Format("{0}/lights/{1}", BaseURLWithUserName, id);
+			yield return DeleteEnumerator(url, errorCallback);
+		}
+
+		IEnumerator DeleteGroupEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
+		{
+			string url = string.Format("{0}/groups/{1}", BaseURLWithUserName, id);
+			yield return DeleteEnumerator(url, errorCallback);
+		}
+
+		IEnumerator DeleteEnumerator(string url, Action<HueErrorInfo> errorCallback = null)
+		{
+			var www = new WWWWrapper(url, method: HTTPMethod.DELETE);
+			yield return www.waitToFinish();
+			isValidJsonResponse(www, errorCallback);	// Just check for errors.
+		}
+
+
+		IEnumerator UpdateLampFromBridgeEnumerator(string id, HueLamp lampToUpdate, Action<HueErrorInfo> errorCallback = null)
+		{
+			string url = string.Format("{0}/lights/{1}", BaseURLWithUserName, id);
+
+			var www = new WWWWrapper(url);
+			yield return www.waitToFinish();
+
+			if (isValidJsonResponse(www, errorCallback))
+			{
+				ProcessLampUpdate(www.responseJSON, lampToUpdate);
+			}
+		}
+
+		IEnumerator DiscoverLightsEnumerator(Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
+		{
+			string url = string.Format("{0}/{1}/lights", BaseURL, currentBridge.userName);
+
+			var www = new WWWWrapper(url);
+			yield return www.waitToFinish();
+
+			if (isValidJsonResponse(www, errorCallback))
+			{
+				ProcessLights(www.responseJSON, lampsCallback);
+			}
+		}
+
+		IEnumerator DiscoverGroupsEnumerator(Action<List<HueGroup>> groupsCallback, Action<HueErrorInfo> errorCallback)
+		{
+			string url = string.Format("{0}/{1}/groups", BaseURL, currentBridge.userName);
+
+			var www = new WWWWrapper(url);
+			yield return www.waitToFinish();
+
+			if (isValidJsonResponse(www, errorCallback))
+			{
+				ProcessGroups(www.responseJSON, groupsCallback);
+			}
+		}
+
+		IEnumerator SendRequestEnumerator(WWWWrapper www, Action<string> successCallback,
+			Action<HueErrorInfo> errorCallback = null)
+		{
+			yield return www.waitToFinish();
+
+			if (isValidJsonResponse(www, errorCallback) && successCallback != null)
+			{
+				successCallback(www.responseText);
+			}
+		}
+
+		#endregion
+
+		#region Helper
+
+		private bool isValidJsonResponse(WWWWrapper www, System.Action<HueErrorInfo> errorCallback)
+		{
 			JSON response = www.responseJSON;
 
 			if (response == null)
@@ -370,125 +411,44 @@ namespace UnityHue
 				{
 					errorCallback(new HueErrorInfo(www.error, null));
 				}
+				return false;
+			}
+			else if (!response.isValid)
+			{
+				if (errorCallback != null)
+				{
+					errorCallback(new HueErrorInfo(null, www.responseText));
+				}
+				return false;
 			}
 			else
 			{
-//				Debug.LogFormat("Create User: {0}", jsonResponse);
-				if (response.hasKey(HueKeys.ERROR))
+				if (response.hasKey("rootArray"))
 				{
-				    if (errorCallback != null)
+					foreach (JSON json in response.getJsonArray("rootArray"))
+					{
+						if (json.hasKey(HueKeys.ERROR))
+						{
+							if (errorCallback != null)
+							{
+								errorCallback(new HueErrorInfo(json));
+							}
+							return false;
+						}
+					}
+				}
+				else if (response.hasKey(HueKeys.ERROR))
+				{
+					if (errorCallback != null)
 					{
 						errorCallback(new HueErrorInfo(response));
 					}
-				}
-				else
-				{
-					var userName = response.getString(HueKeys.USER_NAME, "");
-					if (userName != "")
-					{
-						generatedUserName(userName);
-					}
+					return false;
 				}
 			}
+
+			return true;
 		}
-
-		IEnumerator DeleteLampEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
-		{
-			string url = BaseURLWithUserName + "/lights/" + id;
-			UnityWebRequest deleteRequest = UnityWebRequest.Delete(url);
-			yield return deleteRequest.Send();
-			if (deleteRequest.isNetworkError && errorCallback != null)
-			{
-				errorCallback(new HueErrorInfo(deleteRequest.error, null));
-			}
-		}
-		IEnumerator DeleteGroupEnumerator(string id, Action<HueErrorInfo> errorCallback = null)
-		{
-			string url = BaseURLWithUserName + "/groups/" + id;
-			UnityWebRequest deleteRequest = UnityWebRequest.Delete(url);
-			yield return deleteRequest.Send();
-			if (deleteRequest.isNetworkError && errorCallback != null)
-			{
-				errorCallback(new HueErrorInfo(deleteRequest.error, null));
-			}
-		}
-
-		IEnumerator UpdateLampEnumerator(string id, HueLamp lampToUpdate,
-			Action<HueErrorInfo> errorCallback = null)
-		{
-			string url = BaseURLWithUserName + "/lights/" + id;
-			UnityWebRequest stateRequest = UnityWebRequest.Get(url);
-			yield return stateRequest.Send();
-			if (stateRequest.isNetworkError)
-			{
-				if (errorCallback != null)
-					errorCallback(new HueErrorInfo(stateRequest.error, null));
-			}
-			else
-			{
-				ProcessLampUpdate(stateRequest.downloadHandler.text, lampToUpdate, errorCallback);
-			}
-		}
-
-		IEnumerator DiscoverLightsEnumerator(Action<List<HueLamp>> lampsCallback, Action<HueErrorInfo> errorCallback)
-		{
-			UnityWebRequest lightsRequest = UnityWebRequest.Get(BaseURL + "/" + currentBridge.userName + "/lights");
-			yield return lightsRequest.Send();
-
-			if (lightsRequest.isNetworkError)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(lightsRequest.error, null));
-				}
-			}
-			else
-			{
-				ProcessLights(lightsRequest.downloadHandler.text, lampsCallback, errorCallback);
-			}
-		}
-		IEnumerator DiscoverGroupsEnumerator(Action<List<HueGroup>> groups, Action<HueErrorInfo> errorCallback)
-		{
-			UnityWebRequest groupsRequest = UnityWebRequest.Get(BaseURL + "/" + currentBridge.userName + "/groups");
-			yield return groupsRequest.Send();
-
-			if (groupsRequest.isNetworkError)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(groupsRequest.error, null));
-				}
-			}
-			else
-			{
-				ProcessGroups(groupsRequest.downloadHandler.text, groups, errorCallback);
-			}
-		}
-
-		IEnumerator SendRequestEnumerator(WWWWrapper request, Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback = null)
-		{
-			yield return request.waitToFinish();
-
-			if (request.responseJSON == null)
-			{
-				if (errorCallback != null)
-				{
-					errorCallback(new HueErrorInfo(request.error, null));
-				}
-			}
-			else
-			{
-				if (successCallback != null)
-				{
-					successCallback(request.responseText);
-				}
-			}
-		}
-
-		#endregion
-
-		#region Helper
 
 		public string BaseURL
 		{

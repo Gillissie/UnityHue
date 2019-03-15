@@ -13,6 +13,15 @@ After waitToFinish(), request will be null if the request timed out.
 
 namespace gilligames
 {
+	// Wrapper for HTTP methods that aren't stupidly long and wordy.
+	public static class HTTPMethod
+	{
+		public const string GET = UnityWebRequest.kHttpVerbGET;
+		public const string PUT = UnityWebRequest.kHttpVerbPUT;
+		public const string POST = UnityWebRequest.kHttpVerbPOST;
+		public const string DELETE = UnityWebRequest.kHttpVerbDELETE;
+	}
+
 	public class WWWWrapper
 	{
 		public const int TIMEOUT_SECONDS = 10;
@@ -30,7 +39,7 @@ namespace gilligames
 		private int attempts = 0;
 		private GameTimer timeoutTimer = null;
 		private bool isInQueue = true;
-		private bool isPut = false;
+		private string method = HTTPMethod.GET;
 
 		// Convenience getter.
 		public string responseText
@@ -56,24 +65,24 @@ namespace gilligames
 			get { return request.error; }
 		}
 
-		public WWWWrapper(string url, Dictionary<string, object> bodyDict, Dictionary<string, string> headers = null, bool isPut = false)
+		public WWWWrapper(string url, Dictionary<string, object> bodyDict, Dictionary<string, string> headers = null, string method = "GET")
 		{
-			initCommon(url, JSON.createJsonString(bodyDict), headers, isPut);
+			initCommon(url, JSON.createJsonString(bodyDict), headers, method);
 		}
 
-		public WWWWrapper(string url, string body = "", Dictionary<string, string> headers = null, bool isPut = false)
+		public WWWWrapper(string url, string body = "", Dictionary<string, string> headers = null, string method = "GET")
 		{
-			initCommon(url, body, headers, isPut);
+			initCommon(url, body, headers, method);
 		}
 
-		private void initCommon(string url, string body, Dictionary<string, string> headers, bool isPut)
+		private void initCommon(string url, string body, Dictionary<string, string> headers, string method)
 		{
 			Debug.LogFormat("WWWWrapper request, url: {0}, body: {1}", url, body);
 
 			this.url = url;
 			this.body = body;
 			this.headers = headers;
-			this.isPut = isPut;
+			this.method = method;
 			timeoutTimer = new GameTimer(TIMEOUT_SECONDS);
 
 			if (url == "")
@@ -98,10 +107,16 @@ namespace gilligames
 
 			if (body != "")
 			{
+				if (method == HTTPMethod.GET)
+				{
+					// If using the default method, but there is a body, then default to POST instead.
+					method = HTTPMethod.POST;
+				}
+	
 				// We can't use the shortcut UnityWebRequest.Post() because it url-encodes the body contents like a retard.
 				request = new UnityWebRequest(url);
 				request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(body));
-				request.method = (isPut ? UnityWebRequest.kHttpVerbPUT : UnityWebRequest.kHttpVerbPOST);
+				request.method = method;
 			}
 			else
 			{

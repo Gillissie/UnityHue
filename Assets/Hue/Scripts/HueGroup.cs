@@ -19,7 +19,7 @@ namespace UnityHue
 			this.id = id;
 		}
 
-		public void SetState(params JsonParameter[] parameters)
+		public void SetState(params KeyValuePair<string, object>[] parameters)
 		{
 			SetState(null, null, parameters);
 		}
@@ -29,6 +29,7 @@ namespace UnityHue
 		{
 			ModifyGroup(successCallback, errorCallback, newGroupName);
 		}
+
 		public void SetLights(Action<string> successCallback,
 			Action<HueErrorInfo> errorCallback, params HueLamp[] lamps)
 		{
@@ -64,18 +65,29 @@ namespace UnityHue
 				body[HueKeys.LIGHTS] = list;
 			}
 
-			var www = new WWWWrapper(url, body, isPut: true);
+			var www = new WWWWrapper(url, body, method: HTTPMethod.PUT);
 
 			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
 
 		public void SetState(Action<string> successCallback,
-			Action<HueErrorInfo> errorCallback, params JsonParameter[] parameters)
+		                     Action<HueErrorInfo> errorCallback,
+		                     params KeyValuePair<string, object>[] parameters
+		                    )
 		{
-			string url = HueBridge.instance.BaseURLWithUserName + "/groups/" + id + "/action";
-			UnityWebRequest stateRequest = UnityWebRequest.Put(url, JsonHelper.CreateJsonParameterString(parameters));
-			HueBridge.instance.SendRequest(stateRequest, successCallback, errorCallback);
+			string url = string.Format("{0}/groups/{1}/action", HueBridge.instance.BaseURLWithUserName, id);
+
+			var body = new Dictionary<string, object>();
+			foreach (var kvp in parameters)
+			{
+				body.Add(kvp.Key, kvp.Value);
+			}
+
+			var www = new WWWWrapper(url, body, method: HTTPMethod.PUT);
+
+			HueBridge.instance.SendRequest(www, successCallback, errorCallback);
 		}
+
 		/// <summary>
 		/// Deletes the group.
 		/// </summary>
@@ -93,6 +105,7 @@ namespace UnityHue
 			}
 			CreateHueGroup(succesCallback, errorCallback, groupName, list);
 		}
+
 		public static void CreateHueGroup(Action<string> sucessCallback, Action<HueErrorInfo> errorCallback,
 			string groupName, List<string> ids)
 		{
